@@ -1,199 +1,117 @@
-# Aero — a little further
+# Aero
 
-A flight booking portfolio project built with **Next.js, React and TypeScript**. Search flights, compare fares, choose seats, add bags, review a current price and see your confirmation.
+A responsive flight booking application built with Next.js, React and TypeScript. Aero brings flight search, fare comparison, seat selection and checkout together in a complete booking interface, with an optional Duffel sandbox integration.
 
-**[Live demo](https://aero-zeta-ruddy.vercel.app/) · [Source code](https://github.com/Dave9-wrld/aero)**
+**[Live demo](https://aero-zeta-ruddy.vercel.app/) · [Architecture](docs/architecture.md) · [API setup](docs/sandbox-setup.md)**
 
-This guide walks you through using the app and understanding the code. Start with the tour, then follow one interaction through the architecture.
+![Aero flight search interface](docs/preview.jpg)
 
-## 1. Run the app
+> Aero is a portfolio demonstration. Sample bookings are simulated, and Duffel bookings use test mode. No real tickets are issued or payments collected.
 
-Clone the repository and open a terminal inside it:
+## Features
 
-```powershell
-git clone https://github.com/Dave9-wrld/aero.git
-cd aero
-npm install
-npm run dev
-```
+- **Flight search and comparison** — airport selection, passenger counts, airline and budget filters, and sorting by price or duration.
+- **Search state in the URL** — search criteria, filters and sorting remain available after refreshing or using browser navigation.
+- **Interactive seat maps** — keyboard navigation and individual seat choices for each traveler and flight segment.
+- **Booking flow** — optional baggage, itemized totals, review and printable demo confirmations.
+- **Duffel sandbox integration** — provider test offers, current seat availability, baggage services and fictional traveler profiles.
+- **Server price validation** — fresh fares and services are checked before creating a test order. Changed prices require a new review.
+- **Booking recovery** — uncertain submissions can be checked against Duffel's saved orders without automatically submitting another booking.
+- **Responsive interface** — layouts for mobile and desktop, loading and empty states, clear errors and focus management between booking steps.
 
-Open [localhost:3001](http://localhost:3001). Node 20.9 or newer is required. Node 24 also supports the existing domain test script.
+## Technology
 
-| Command             | Purpose                                                                         |
-| ------------------- | ------------------------------------------------------------------------------- |
-| `npm run dev`       | Development server; saving files updates the app                                |
-| `npm run build`     | Production compilation and TypeScript checking                                  |
-| `npm start`         | Production server after a build                                                 |
-| `npm run typecheck` | TypeScript checking without a build                                             |
-| `npm test`          | Existing sample-domain tests; these do not cover the entire sandbox integration |
+| Area | Tools |
+| --- | --- |
+| Application | Next.js App Router, React, TypeScript |
+| Styling | Custom CSS, locally hosted Manrope and Instrument Serif fonts |
+| API integration | Duffel test API through server-side route handlers |
+| State | React state, a booking reducer, URL parameters and session storage |
+| Deployment | Vercel |
 
-Stop the dev server before building in the same folder, because Next development and production output share `.next`.
+## Architecture
 
-## 2. Understand the two modes
-
-|                      | Sample flights                                | Duffel sandbox                            |
-| -------------------- | --------------------------------------------- | ----------------------------------------- |
-| API token            | None                                          | Duffel **test** token                     |
-| Data                 | Deterministic fictional flights               | Provider test offers, seats and bags      |
-| Travelers            | Enter sample names or use Fill sample details | Fixed fictional profiles supplied by Aero |
-| Confirmation         | Generated locally                             | Test order created in Duffel              |
-| Flight fare          | NGN, per adult                                | Provider currency, all travelers          |
-| Real booking/payment | No                                            | No                                        |
-
-The sample flow works without an API. Sandbox errors stay visible; the app does not quietly replace provider results with sample flights.
-
-## 3. Take a five-minute tour
-
-### Sample flights
-
-1. Search **Lagos → London**, a future date, and one adult.
-2. Try nonstop, airline and budget filters, then lowest fare and fastest sorting.
-3. Choose a flight and seat. Use arrow keys in the seat map and Enter/Space to select.
-4. Continue to traveler details. Use **Fill sample details** and optionally add checked bags.
-5. Review the breakdown and confirm the demo trip.
-6. Open **My trip** to return to the confirmation. Print/save the demo boarding pass.
-
-Refresh a sample booking screen to see the draft restored in the same tab. Unlisted sample routes demonstrate an empty state.
-
-### Duffel sandbox
-
-1. Use the same search and select **Duffel sandbox** on the results screen.
-2. Choose a **Duffel Airways** offer for the simplest test journey.
-3. Click **View flight & seats** to retrieve the current fare and aircraft layout.
-4. Pick optional seats for each traveler and each flight. Connecting itineraries need a choice per flight. You can also continue without seats.
-5. Choose **Continue to bags**. Review included baggage and add optional extra bags where available.
-6. Review the fictional traveler profiles. No typing or personal details needed.
-7. Choose **Check latest price**. The server retrieves fresh fares and service prices.
-8. Review the checked total, tick the test-mode acknowledgment and choose **Create test booking**.
-9. Copy the test reference or print/save the itinerary. This confirmation is **not valid for travel**.
-
-**My trip** opens your most recent sample or sandbox confirmation. Sandbox confirmations are saved in the same browser tab. Refreshing the offer resets seat/bag choices because availability and service IDs can change.
-
-## 4. Set up the API
-
-Your local token is already configured. For a fresh installation:
-
-1. Create a [Duffel account](https://app.duffel.com) and a Developer test token with flight search and order creation permissions.
-2. Copy `.env.example` to `.env.local` inside `aero`.
-3. Set the token in that file:
-
-```dotenv
-DUFFEL_ACCESS_TOKEN=your_duffel_test_token_here
-```
-
-4. Restart the development server.
-
-Keep this variable server-only. Never add `NEXT_PUBLIC_` to its name or commit `.env.local`. Aero rejects live tokens and live offers. Read [sandbox setup](docs/sandbox-setup.md) and Duffel's [test-mode guide](https://duffel.com/docs/api/overview/test-mode).
-
-## 5. Find your way around the code
+The code is organized by feature. Routes compose the screens, feature modules own their data and booking rules, and shared components provide reusable interface elements.
 
 ```text
 src/
-  app/                          Pages, layout, styles and API routes
-    api/flights/search/         Flight search endpoint
-    api/flights/offers/[id]/     Current fare, seats and baggage
-    api/flights/checkout/quote/  Fresh server price check
-    api/flights/checkout/order/  Test order creation
-  components/                   Shared header, footer, icons and illustrations
-  data/airports.ts               Supported airports
-  features/
-    flight-search/              Search form, airport picker and URL helpers
-    flight-results/             Cards, filters and data providers
-      duffel.server.ts          Provider requests and response normalization
-    seat-selection/             Sample aircraft map
-    booking/                    Sample reducer, draft storage and confirmation
-    sandbox-offer/              Provider itinerary, seat maps and booking steps
-    sandbox-checkout/           Bags, fictional profiles, quotes and receipts
-  lib/                          Currency, dates and API request guard
+├── app/                 Pages, layouts and server API routes
+├── components/          Shared interface components and illustrations
+├── data/                Supported airport data
+├── features/
+│   ├── flight-search/   Search form and URL helpers
+│   ├── flight-results/  Provider adapters, results and filtering
+│   ├── seat-selection/  Sample seat maps
+│   ├── booking/         Sample booking state and confirmation
+│   ├── sandbox-offer/   Provider itineraries and seat maps
+│   └── sandbox-checkout/ Quotes, test orders and recovery
+└── lib/                 Formatting and API request validation
 ```
 
-A **page** chooses the screen. A **component** renders UI and handles interactions. A **model** describes data and rules. A **provider** obtains data without making the UI understand Duffel's JSON. An **API route** validates browser requests and talks to Duffel with the secret token.
+### Key implementation decisions
 
-## 6. Learn by following the data
+- **Provider adapters:** sample and sandbox flight results share a display model. External API responses are normalized before reaching the interface.
+- **Server-only credentials:** the Duffel token stays on the server. The browser sends requests to Aero's own API routes.
+- **Money as integer minor units:** fares, seats and baggage totals are calculated without floating-point currency arithmetic.
+- **Signed checkout quotes:** the server signs the selected options, total, currency and expiry, then rechecks current services before submission.
+- **Provider-backed recovery:** confirmed test orders are stored by Duffel. Recovery verifies the offer, quote hash, currency and total before returning a receipt.
 
-### Lesson A — The URL can hold application state
+See the [architecture documentation](docs/architecture.md) for the data flow and implementation tradeoffs.
 
-Start at `flight-search/SearchForm.tsx`. Submitting validates the draft, calls `searchToParams`, and navigates to `/flights?...`.
+## Run locally
 
-`FlightResults.tsx` reads those parameters. Search, source, filters and sorting survive refresh and Back navigation. Temporary UI, such as the airport dropdown, stays in component state.
+Requires Node.js 20.9 or newer and npm. Use Node.js 24 if running the existing domain test script.
 
-**Try:** change sorting and watch the URL. Find `update()` in FlightResults.
-
-### Lesson B — Put external data behind a contract
-
-Read `flight-results/types.ts`, then `sandbox-provider.ts`. Sample and sandbox providers both return `FlightOffer[]`.
-
-```text
-React screen → Aero API route → Duffel → normalize response → React screen
+```bash
+git clone https://github.com/Dave9-wrld/aero.git
+cd aero
+npm ci
+npm run dev
 ```
 
-Only the server adds the token. The normalizer translates slices, segments and string prices into Aero's smaller models. AbortController prevents an outdated search response from replacing a newer one.
+Open [http://localhost:3001](http://localhost:3001). The sample flight experience works without an API token.
 
-**Try:** find where `total_amount` becomes `priceCents`. Explain why the UI never imports `duffel.server.ts`.
+### Optional Duffel sandbox setup
 
-### Lesson C — Derive totals from choices
+1. Create a Duffel **test** token with flight search and order permissions.
+2. Copy `.env.example` to `.env.local` in the project root.
+3. Set the server environment variable, then restart the development server:
 
-Read `booking/model.ts` for samples and `sandbox-checkout/checkout.server.ts` for sandbox checkout.
+```dotenv
+DUFFEL_ACCESS_TOKEN=your_test_token_here
+```
 
-Money uses integer minor units: `2000` means €20. The total comes from fare + seats + bag quantities. Keeping a separate editable total would create another value to synchronize.
+`.env.local` is ignored by Git. Keep the variable server-only; do not add a `NEXT_PUBLIC_` prefix. Live tokens and live offers are rejected.
 
-**Try:** trace a seat click from SandboxSeatMap into its assignment and total. Why do you need passenger and segment IDs as well as a seat number?
+For a complete setup reference, see [API setup](docs/sandbox-setup.md).
 
-### Lesson D — An estimate is different from an approved price
+### Commands
 
-The browser sends choices, not a trusted price. The quote endpoint retrieves fresh data, validates choices, calculates the total and signs a quote lasting up to two minutes.
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start development on port 3001 |
+| `npm run build` | Create a production build and check TypeScript |
+| `npm start` | Serve the production build on port 3001 |
+| `npm run typecheck` | Check TypeScript without building |
+| `npm test` | Run the existing sample-domain tests |
 
-The order endpoint verifies the signature, resolves current services again, and refuses a changed total. Only then does it create a test order using fresh service IDs and fictional profiles.
+Stop the development server before building in the same directory; both use `.next`.
 
-**Try:** locate the comparison between the quote total and new total. What should the user see if the price changes?
+## Deployment
 
-### Lesson E — A timeout does not prove a booking failed
+Import the repository into Vercel using the Next.js preset. The sample experience needs no environment variables. To enable sandbox features, add `DUFFEL_ACCESS_TOKEN` as a sensitive server environment variable for the deployment.
 
-A provider could create an order while its response is lost. Blindly retrying could create another order.
+Checkout uses Node.js route handlers and Duffel's saved order records. It does not require a writable local filesystem.
 
-Aero checks Duffel's saved orders before submission and coalesces concurrent requests within one server instance. Duffel permits only one booked offer per offer request. After an uncertain response, **Check booking status** reads the saved order without submitting another booking.
+## Scope and limitations
 
-**Try:** find `recoverOrder` and `recoverOnly` in checkout.server. Why can an expired quote still check an existing booking but cannot create one?
+- One-way economy searches for 1–4 adults, supported airports and currencies with two decimal places.
+- Sandbox checkout uses fixed fictional profiles. Airlines requiring identity documents are not supported.
+- Drafts and receipts are saved in the current browser tab; there is no account-based trip history.
+- No real ticketing, card processing, cancellations, email delivery or live flight notifications.
+- Request limiting is per server instance. A real booking service would also require shared submission records, authentication and operational reconciliation.
+- Existing tests cover sample-domain logic, rather than the complete sandbox integration.
 
-### Lesson F — Design the awkward states too
+---
 
-Look for loading, empty, error, expired and unavailable states. Seats are optional, missing extras do not block progress, changes in price are visible, and step changes move keyboard focus to the heading.
-
-**Try:** complete airport selection and navigate seats using only the keyboard.
-
-Read [the architecture guide](docs/architecture.md) for deeper explanations and exercises.
-
-## 7. Troubleshooting
-
-| What you see                        | What to do                                                            |
-| ----------------------------------- | --------------------------------------------------------------------- |
-| Sandbox not connected               | Check `aero/.env.local` and restart the server                        |
-| Token rejected                      | Use a valid test token with search/order permissions                  |
-| Search/quote timeout                | Retry that read operation                                             |
-| Submitted order not confirmed       | Check the Duffel test dashboard first; do not repeat the booking      |
-| Offer expired                       | Return to flights and refresh offers                                  |
-| Seat/bag unavailable                | Edit the choices or continue without extras                           |
-| Price check expired                 | Click Check latest price again                                        |
-| Airline requires identity documents | Choose Duffel Airways; Aero does not collect passports                |
-| No extra bags                       | The provider supplied no purchasable baggage for this offer           |
-| No saved trip                       | Use the same browser tab; storage does not follow another tab/browser |
-| Port 3001 in use                    | Reuse the existing server or stop your previous one                   |
-
-## 8. Describe it in your portfolio
-
-> I built a flight booking interface with interchangeable data providers, URL-based search and filters, accessible seat maps, multi-traveler choices, derived totals and a complete Duffel test booking flow. Server routes protect the token, revalidate prices and services, and reconcile uncertain submissions with the provider.
-
-Be ready to demonstrate loading and empty states, keyboard interaction, optional extras, current totals and confirmation. Explain the tradeoffs in your own words.
-
-## 9. Current boundaries and hosting
-
-- One-way economy, 1–4 adults, supported airports and one currency per search. Currency must use two decimal places.
-- Fictional profiles only in sandbox. Airlines requiring identity documents cannot be booked here.
-- No real payment, live travel booking, login, email delivery, cancellation or live flight notifications.
-- Sample drafts and sandbox receipts use tab-scoped session storage. Browser storage is a convenience, not order verification.
-- Deploy as a Next.js project on Vercel with Node.js route handlers. Add `DUFFEL_ACCESS_TOKEN` as a server environment secret; never use a `NEXT_PUBLIC_` variable or commit `.env.local`.
-- Confirmed sandbox orders are stored by Duffel. Recovery reads them by offer ID and checks their quote hash. The app does not need writable local storage for hosted checkout.
-- The in-memory request guard is per instance. Provider booking uniqueness protects this sandbox across instances; a real booking service would need a shared transactional ledger and operational reconciliation.
-- Checkout endpoints enforce same-origin JSON and a basic process-wide request limit. A public deployment also needs platform rate limits and provider quota monitoring.
-
-Official references: [flight guide](https://duffel.com/docs/guides/getting-started-with-flights), [offers](https://duffel.com/docs/api/v2/offers), [seat maps](https://duffel.com/docs/api/v2/seat-maps), [orders](https://duffel.com/docs/api/v2/orders).
+Built by [David Agbor](https://github.com/Dave9-wrld).
