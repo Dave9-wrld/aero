@@ -179,7 +179,10 @@ type Approval = {
   totalCents: number;
   currency: string;
   expires: number;
-  receiptBasis: Pick<SandboxReceipt, "details" | "seats" | "bags" | "fareCents" | "seatCents" | "bagCents">;
+  receiptBasis: Pick<
+    SandboxReceipt,
+    "details" | "seats" | "bags" | "fareCents" | "seatCents" | "bagCents"
+  >;
 };
 function signature(payload: string) {
   return createHmac("sha256", secret())
@@ -204,7 +207,10 @@ function verify(token: string, recovering = false): Approval {
   const raw = JSON.parse(
     Buffer.from(parts[0], "base64url").toString(),
   ) as Approval;
-  if (!Number.isFinite(raw.expires) || (!recovering && raw.expires <= Date.now()))
+  if (
+    !Number.isFinite(raw.expires) ||
+    (!recovering && raw.expires <= Date.now())
+  )
     throw new FlightSearchError(
       "Your price check expired. Check the latest price again.",
       409,
@@ -231,7 +237,15 @@ export async function quoteCheckout(
       receiptBasis: {
         details: { ...result.details, seatMaps: [], baggage: [] },
         seats: result.seats,
-        bags: result.bags.map(({ label, quantity, priceCents, passengerIds, segmentIds }) => ({ label, quantity, priceCents, passengerIds, segmentIds })),
+        bags: result.bags.map(
+          ({ label, quantity, priceCents, passengerIds, segmentIds }) => ({
+            label,
+            quantity,
+            priceCents,
+            passengerIds,
+            segmentIds,
+          }),
+        ),
         fareCents: result.fareCents,
         seatCents: result.seatCents,
         bagCents: result.bagCents,
@@ -241,75 +255,149 @@ export async function quoteCheckout(
   };
 }
 
-
 // Duffel stores confirmed orders and allows only one booked offer per offer request.
 // This process guard coalesces concurrent submissions; provider uniqueness protects
 // across instances. A missing response is reconciled by GET, never a POST retry.
 const attempts = new Map<string, Promise<SandboxReceipt>>();
-function quoteId(token: string) { return createHash("sha256").update(token).digest("hex"); }
-function receiptFromOrder(raw: Record<string, unknown>, approval: Approval, token: string): SandboxReceipt {
-  if (raw.live_mode !== false || raw.offer_id !== approval.selection.offerId ||
-      record(raw.metadata).quote_id !== quoteId(token) ||
-      text(raw.total_currency) !== approval.currency || amountInCents(raw.total_amount) !== approval.totalCents)
-    throw new FlightSearchError("This order needs checking in the Duffel test dashboard. Start a new search for another booking.", 409);
+function quoteId(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+function receiptFromOrder(
+  raw: Record<string, unknown>,
+  approval: Approval,
+  token: string,
+): SandboxReceipt {
+  if (
+    raw.live_mode !== false ||
+    raw.offer_id !== approval.selection.offerId ||
+    record(raw.metadata).quote_id !== quoteId(token) ||
+    text(raw.total_currency) !== approval.currency ||
+    amountInCents(raw.total_amount) !== approval.totalCents
+  )
+    throw new FlightSearchError(
+      "This order needs checking in the Duffel test dashboard. Start a new search for another booking.",
+      409,
+    );
   return {
     ...approval.receiptBasis,
     source: "duffel-sandbox",
-    id: text(raw.id), reference: text(raw.booking_reference), createdAt: text(raw.created_at),
-    currency: text(raw.total_currency), totalCents: amountInCents(raw.total_amount),
-    travelers: demoTravelers.slice(0, approval.selection.criteria.passengers).map(p => ({name: p.given_name + " " + p.family_name, bornOn: p.born_on})),
+    id: text(raw.id),
+    reference: text(raw.booking_reference),
+    createdAt: text(raw.created_at),
+    currency: text(raw.total_currency),
+    totalCents: amountInCents(raw.total_amount),
+    travelers: demoTravelers
+      .slice(0, approval.selection.criteria.passengers)
+      .map((p) => ({
+        name: p.given_name + " " + p.family_name,
+        bornOn: p.born_on,
+      })),
   };
 }
-async function recoverOrder(approval: Approval, token: string): Promise<SandboxReceipt | null> {
-  const orders = await requestDuffel("orders?offer_id=" + encodeURIComponent(approval.selection.offerId) + "&limit=2", new AbortController().signal);
+async function recoverOrder(
+  approval: Approval,
+  token: string,
+): Promise<SandboxReceipt | null> {
+  const orders = await requestDuffel(
+    "orders?offer_id=" +
+      encodeURIComponent(approval.selection.offerId) +
+      "&limit=2",
+    new AbortController().signal,
+  );
   if (!Array.isArray(orders) || orders.length > 1)
-    throw new FlightSearchError("Could not verify this booking. Check the Duffel test dashboard.", 502);
-  return orders.length ? receiptFromOrder(record(orders[0]), approval, token) : null;
+    throw new FlightSearchError(
+      "Could not verify this booking. Check the Duffel test dashboard.",
+      502,
+    );
+  return orders.length
+    ? receiptFromOrder(record(orders[0]), approval, token)
+    : null;
 }
-export async function createSandboxOrder(input: unknown): Promise<SandboxReceipt> {
+export async function createSandboxOrder(
+  input: unknown,
+): Promise<SandboxReceipt> {
   const body = inputRecord(input);
   if (body.acceptDemo !== true || typeof body.token !== "string")
-    throw new FlightSearchError("Confirm that this is a fictional test booking.", 400);
+    throw new FlightSearchError(
+      "Confirm that this is a fictional test booking.",
+      400,
+    );
   // Expired signatures remain valid for read-only recovery, never a new mutation.
-  const approval = verify(body.token, true), token = body.token;
+  const approval = verify(body.token, true),
+    token = body.token;
   const previous = await recoverOrder(approval, token);
   if (previous) return previous;
   if (body.recoverOnly === true)
-    throw new FlightSearchError("Duffel has not confirmed a booking yet. Check status again shortly or check the Developer test dashboard. No booking was resubmitted.", 409);
+    throw new FlightSearchError(
+      "Duffel has not confirmed a booking yet. Check status again shortly or check the Developer test dashboard. No booking was resubmitted.",
+      409,
+    );
   verify(token);
   const existing = attempts.get(approval.selection.offerId);
   if (existing) return existing;
   if (attempts.size >= 2000)
-    throw new FlightSearchError("The demo is busy. Please start a new search later.", 503);
+    throw new FlightSearchError(
+      "The demo is busy. Please start a new search later.",
+      503,
+    );
   const attempt = submitOrder(approval, token);
   attempts.set(approval.selection.offerId, attempt);
   return attempt;
 }
-async function submitOrder(approval: Approval, token: string): Promise<SandboxReceipt> {
-  const result = await resolve(approval.selection, new AbortController().signal);
-  if (result.totalCents !== approval.totalCents || result.currency !== approval.currency)
-    throw new FlightSearchError("The total changed. Start a new search and review the latest price before confirming.", 409);
+async function submitOrder(
+  approval: Approval,
+  token: string,
+): Promise<SandboxReceipt> {
+  const result = await resolve(
+    approval.selection,
+    new AbortController().signal,
+  );
+  if (
+    result.totalCents !== approval.totalCents ||
+    result.currency !== approval.currency
+  )
+    throw new FlightSearchError(
+      "The total changed. Start a new search and review the latest price before confirming.",
+      409,
+    );
   const profiles = result.details.passengerIds.map((id, index) => ({
-    ...demoTravelers[index], id, email: "demo@aero.example",
+    ...demoTravelers[index],
+    id,
+    email: "demo@aero.example",
     // Duffel's published guide example; never a visitor's phone number.
     phone_number: "+442080160508",
   }));
   const services = [
-    ...result.seats.map(seat => ({id: seat.serviceId, quantity: 1})),
-    ...result.bags.map(bag => ({id: bag.id, quantity: bag.quantity})),
+    ...result.seats.map((seat) => ({ id: seat.serviceId, quantity: 1 })),
+    ...result.bags.map((bag) => ({ id: bag.id, quantity: bag.quantity })),
   ];
   let raw: Record<string, unknown>;
   try {
-    raw = record(await requestDuffel("orders", new AbortController().signal, {data: {
-      type: "instant", selected_offers: [approval.selection.offerId], passengers: profiles,
-      payments: [{type: "balance", currency: result.currency, amount: (result.totalCents / 100).toFixed(2)}],
-      ...(services.length ? {services} : {}),
-      metadata: {app: "aero_portfolio_demo", quote_id: quoteId(token)},
-    }}));
+    raw = record(
+      await requestDuffel("orders", new AbortController().signal, {
+        data: {
+          type: "instant",
+          selected_offers: [approval.selection.offerId],
+          passengers: profiles,
+          payments: [
+            {
+              type: "balance",
+              currency: result.currency,
+              amount: (result.totalCents / 100).toFixed(2),
+            },
+          ],
+          ...(services.length ? { services } : {}),
+          metadata: { app: "aero_portfolio_demo", quote_id: quoteId(token) },
+        },
+      }),
+    );
   } catch {
     const confirmed = await recoverOrder(approval, token).catch(() => null);
     if (confirmed) return confirmed;
-    throw new FlightSearchError("The test booking was not confirmed. Use Check booking status; this action only reads Duffel's saved orders. You can also check the Developer test dashboard.", 502);
+    throw new FlightSearchError(
+      "The test booking was not confirmed. Use Check booking status; this action only reads Duffel's saved orders. You can also check the Developer test dashboard.",
+      502,
+    );
   }
   return receiptFromOrder(raw, approval, token);
 }

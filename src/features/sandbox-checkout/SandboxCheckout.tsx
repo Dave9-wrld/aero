@@ -106,7 +106,8 @@ export default function SandboxCheckout({
     }
   }
   async function confirm() {
-    if (gate.current || (!recoveryToken && (!quote || !accepted || expired))) return;
+    if (gate.current || (!recoveryToken && (!quote || !accepted || expired)))
+      return;
     gate.current = true;
     setPending(true);
     onBusy(true);
@@ -403,7 +404,11 @@ export default function SandboxCheckout({
           ← {stage === "extras" ? "Back to seats" : "Edit extras"}
         </button>
         {recoveryToken ? (
-          <button className="button button-primary" disabled={pending} onClick={confirm}>
+          <button
+            className="button button-primary"
+            disabled={pending}
+            onClick={confirm}
+          >
             {pending ? "Checking booking…" : "Check booking status"}
           </button>
         ) : stage === "extras" || !quote || expired ? (
