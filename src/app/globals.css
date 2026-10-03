@@ -5239,3 +5239,157 @@ input[aria-invalid="true"] {
     margin-top: 18px;
   }
 }
+
+/* Keep the next step visible throughout both booking journeys. */
+.booking-page {
+  padding-bottom: 190px;
+}
+.booking-page :is(input, select, button, a) {
+  scroll-margin-block: 110px 180px;
+}
+.booking-heading h1 {
+  scroll-margin-top: 110px;
+}
+.booking-heading h1:focus {
+  outline: none;
+}
+.booking-action-bar {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 25;
+  padding: 16px 0 calc(16px + env(safe-area-inset-bottom));
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -8px 28px #233d350a;
+}
+.booking-action-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+}
+.booking-action-context {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 3px 16px;
+  min-width: 0;
+}
+.booking-action-context > span {
+  align-self: center;
+  font-size: 11px;
+  color: var(--muted);
+}
+.booking-action-context > strong {
+  font-size: 15px;
+  color: var(--green);
+}
+.booking-action-context > p {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: var(--ink);
+  max-width: 560px;
+}
+.booking-action-bar .booking-navigation {
+  display: flex;
+  flex-wrap: nowrap;
+  margin: 0;
+  gap: 22px;
+  flex-shrink: 0;
+}
+.booking-action-bar .booking-navigation > .button {
+  min-height: 46px;
+  font-size: 12px;
+  padding: 13px 20px;
+}
+.booking-action-bar .booking-navigation > :is(.text-button, .text-link) {
+  font-size: 12px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--green);
+}
+.sandbox-itinerary > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+  list-style: none;
+}
+.sandbox-itinerary > summary::-webkit-details-marker {
+  display: none;
+}
+.sandbox-itinerary > summary strong,
+.sandbox-itinerary > summary span {
+  display: block;
+  font-size: 13px;
+}
+.sandbox-itinerary > summary span {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 3px;
+}
+.sandbox-itinerary[open] > summary > svg {
+  transform: rotate(180deg);
+}
+.sandbox-itinerary-content {
+  margin-top: 24px;
+}
+@media (max-width: 900px) {
+  .booking-action-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .booking-action-context {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .booking-action-context > strong {
+    text-align: right;
+  }
+  .booking-action-context > p {
+    max-width: none;
+  }
+  .booking-action-bar .booking-navigation {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    gap: 12px;
+  }
+  .booking-action-bar .booking-navigation > .button {
+    width: 100%;
+    justify-self: stretch;
+  }
+  .sandbox-offer-page .sandbox-preview-summary {
+    order: 1;
+  }
+}
+@media (max-width: 480px) {
+  .booking-page {
+    padding-bottom: 225px;
+  }
+  .booking-action-context {
+    column-gap: 10px;
+  }
+  .booking-action-context > strong {
+    max-width: 185px;
+    font-size: 13px;
+  }
+  .booking-action-bar .booking-navigation > .button {
+    padding-inline: 12px;
+    font-size: 11px;
+    white-space: normal;
+  }
+  .booking-action-bar .booking-navigation > :is(.text-button, .text-link) {
+    font-size: 11px;
+  }
+}
+@media (max-height: 480px) {
+  .booking-action-context > p {
+    display: none;
+  }
+}
+@media print {
+  .booking-action-bar {
+    display: none;
+  }
+}

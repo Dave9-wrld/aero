@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Icon from "@/components/Icon";
 import { PageLoading } from "@/components/Shell";
@@ -9,25 +9,12 @@ import { searchToParams } from "@/features/flight-search/model";
 import SeatSelection from "@/features/seat-selection/SeatSelection";
 import { money } from "@/lib/format";
 import { useBooking } from "./BookingProvider";
-import {
-  bookingTotal,
-  hasAllSeats,
-  travelerErrors,
-  type BookingDraft,
-} from "./model";
+import { bookingTotal, hasAllSeats, travelerErrors } from "./model";
 import BookingSummary from "./BookingSummary";
+import BookingActionBar from "@/components/BookingActionBar";
 
 const stages = ["seats", "travelers", "review"] as const;
 type Stage = (typeof stages)[number];
-
-function MobileTotal({ draft }: { draft: BookingDraft }) {
-  return (
-    <div className="mobile-booking-total">
-      <span>Total · sample fare</span>
-      <strong>{money(bookingTotal(draft).total)}</strong>
-    </div>
-  );
-}
 
 export default function BookingFlow() {
   const { state, dispatch, ready } = useBooking();
@@ -36,6 +23,22 @@ export default function BookingFlow() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState("");
   const [pending, setPending] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const requestedStep = params.get("step");
+  const hasDraft = Boolean(state.draft);
+  useEffect(() => {
+    if (!ready || !hasDraft) return;
+    heading.current?.focus({ preventScroll: true });
+    heading.current?.scrollIntoView({ block: "start", behavior: "instant" });
+  }, [requestedStep, ready, hasDraft]);
+  useEffect(() => {
+    const first = Object.keys(errors)[0];
+    if (!first) return;
+    const [index, field] = first.split("-");
+    document
+      .getElementById(first === "email" ? "contact-email" : `${field}-${index}`)
+      ?.focus();
+  }, [errors]);
   if (!ready) return <PageLoading />;
   const draft = state.draft;
   if (!draft)
@@ -64,6 +67,7 @@ export default function BookingFlow() {
         ? "travelers"
         : "seats";
   const stageIndex = stages.indexOf(stage);
+  const total = `${money(bookingTotal(draft).total)} · demo total`;
   function navigate(next: Stage) {
     if (next !== "seats" && !seatsReady) {
       setNotice("Choose a seat for every traveler to continue.");
@@ -116,7 +120,7 @@ export default function BookingFlow() {
       </div>
       <div className="booking-heading">
         <p className="eyebrow">THE LITTLE DETAILS</p>
-        <h1>
+        <h1 ref={heading} tabIndex={-1}>
           Make it <em>your journey.</em>
         </h1>
         <p>Your flight is picked. Let’s make the rest feel right.</p>
@@ -137,7 +141,7 @@ export default function BookingFlow() {
                 `0${index + 1}`
               )}
             </span>
-            {["Your seat", "Your details", "A final look"][index]}
+            {["Seats", "Travelers & bags", "Review"][index]}
             {index < 2 && <i />}
           </button>
         ))}
@@ -147,8 +151,16 @@ export default function BookingFlow() {
           {stage === "seats" && (
             <>
               <SeatSelection draft={draft} dispatch={dispatch} />
-              <div className="booking-navigation">
-                <MobileTotal draft={draft} />
+              <BookingActionBar
+                step="Step 1 of 3 · Seats"
+                total={total}
+                hint={
+                  notice ||
+                  (seatsReady
+                    ? "Seats selected. Continue to traveler details."
+                    : `Choose ${draft.seats.filter((seat) => !seat).length} more seat${draft.seats.filter((seat) => !seat).length === 1 ? "" : "s"} to continue.`)
+                }
+              >
                 <Link
                   className="text-link"
                   href={`/flights?${searchToParams(draft.criteria)}`}
@@ -159,9 +171,9 @@ export default function BookingFlow() {
                   className="button button-primary"
                   onClick={() => navigate("travelers")}
                 >
-                  Traveler details <Icon name="arrow" size={17} />
+                  Continue to details <Icon name="arrow" size={17} />
                 </button>
-              </div>
+              </BookingActionBar>
             </>
           )}
           {stage === "travelers" && (
@@ -314,8 +326,14 @@ export default function BookingFlow() {
                   </select>
                 </div>
               </section>
-              <div className="booking-navigation">
-                <MobileTotal draft={draft} />
+              <BookingActionBar
+                step="Step 2 of 3 · Travelers & bags"
+                total={total}
+                hint={
+                  notice ||
+                  "Fill in sample details, or use the demo profiles above. Bags are optional."
+                }
+              >
                 <button
                   className="text-button"
                   type="button"
@@ -326,7 +344,7 @@ export default function BookingFlow() {
                 <button className="button button-primary" type="submit">
                   Review your trip <Icon name="arrow" size={17} />
                 </button>
-              </div>
+              </BookingActionBar>
             </form>
           )}
           {stage === "review" && (
@@ -387,8 +405,11 @@ export default function BookingFlow() {
                   </div>
                 </div>
               </section>
-              <div className="booking-navigation">
-                <MobileTotal draft={draft} />
+              <BookingActionBar
+                step="Step 3 of 3 · Review"
+                total={total}
+                hint="Review your choices, then confirm. No real booking or payment."
+              >
                 <button
                   className="text-button"
                   disabled={pending}
@@ -404,7 +425,7 @@ export default function BookingFlow() {
                   {pending ? "Preparing your itinerary…" : "Confirm demo trip"}
                   <Icon name="arrow" size={17} />
                 </button>
-              </div>
+              </BookingActionBar>
             </>
           )}
           {notice && (

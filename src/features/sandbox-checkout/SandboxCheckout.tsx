@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/Icon";
+import BookingActionBar from "@/components/BookingActionBar";
 import { money, prettyDate } from "@/lib/format";
 import type { SearchCriteria } from "../flight-search/types";
 import type {
@@ -42,6 +43,7 @@ export default function SandboxCheckout({
   onStage,
   onBusy,
   onQuote,
+  onRecovery,
 }: {
   details: SandboxOfferDetails;
   criteria: SearchCriteria;
@@ -52,6 +54,7 @@ export default function SandboxCheckout({
   onStage: (stage: "seats" | "extras" | "review") => void;
   onBusy: (busy: boolean) => void;
   onQuote: (quote: CheckoutQuote | null) => void;
+  onRecovery: (recovering: boolean) => void;
 }) {
   const router = useRouter();
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
@@ -106,8 +109,13 @@ export default function SandboxCheckout({
     }
   }
   async function confirm() {
-    if (gate.current || (!recoveryToken && (!quote || !accepted || expired)))
+    if (gate.current || (!recoveryToken && (!quote || expired))) return;
+    if (!recoveryToken && !accepted) {
+      const consent = document.getElementById("sandbox-consent");
+      consent?.focus({ preventScroll: true });
+      consent?.scrollIntoView({ block: "center", behavior: "smooth" });
       return;
+    }
     gate.current = true;
     setPending(true);
     onBusy(true);
@@ -127,6 +135,7 @@ export default function SandboxCheckout({
           : "Could not confirm this test booking.",
       );
       setRecoveryToken(recoveryToken ?? quote!.token);
+      onRecovery(true);
       setAccepted(false);
     } finally {
       gate.current = false;
@@ -360,6 +369,7 @@ export default function SandboxCheckout({
               </p>
               <label className="demo-consent">
                 <input
+                  id="sandbox-consent"
                   type="checkbox"
                   checked={accepted}
                   disabled={pending || expired}
@@ -391,7 +401,27 @@ export default function SandboxCheckout({
             : "Working with Duffel’s test environment. Keep this tab open…"}
         </p>
       )}
-      <div className="booking-navigation">
+      <BookingActionBar
+        step={
+          stage === "extras"
+            ? "Step 2 of 3 · Bags & travelers"
+            : "Step 3 of 3 · Review"
+        }
+        total={`${money(quote?.totalCents ?? selectionTotal, quote?.currency ?? details.offer.currency)} · ${quote ? "checked" : "estimated"} total`}
+        hint={
+          recoveryToken
+            ? "Check status to recover your booking. This does not create another order."
+            : pending
+              ? "Keep this tab open while we contact Duffel."
+              : stage === "extras"
+                ? "Bags are optional. Continue to review your current fare."
+                : expired
+                  ? "Your price check expired. Refresh the price to continue."
+                  : !accepted && quote
+                    ? "Tick the test booking acknowledgment above to confirm."
+                    : "Review your choices. No real travel or payment."
+        }
+      >
         <button
           className="text-button"
           disabled={pending || Boolean(recoveryToken)}
@@ -417,20 +447,28 @@ export default function SandboxCheckout({
             disabled={pending}
             onClick={checkPrice}
           >
-            {pending ? "Checking…" : "Check latest price"}
+            {pending
+              ? "Checking price…"
+              : stage === "extras"
+                ? "Continue to review"
+                : "Refresh price"}
             <Icon name="arrow" size={16} />
           </button>
         ) : (
           <button
             className="button button-primary"
-            disabled={!accepted || pending}
+            disabled={pending}
             onClick={confirm}
           >
-            {pending ? "Creating test booking…" : "Create test booking"}
+            {pending
+              ? "Creating test booking…"
+              : !accepted
+                ? "Review acknowledgment"
+                : "Create test booking"}
             <Icon name="arrow" size={16} />
           </button>
         )}
-      </div>
+      </BookingActionBar>
     </div>
   );
 }

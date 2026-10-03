@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Icon from "@/components/Icon";
+import BookingActionBar from "@/components/BookingActionBar";
 import { PageLoading } from "@/components/Shell";
 import {
   searchFromParams,
@@ -143,6 +144,7 @@ function OfferExperience({
   const [bags, setBags] = useState<BagChoice[]>([]);
   const [checkedQuote, setCheckedQuote] = useState<CheckoutQuote | null>(null);
   const [busy, setBusy] = useState(false);
+  const [recoveryPending, setRecoveryPending] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const previousStage = useRef(stage);
   useEffect(() => {
@@ -264,7 +266,11 @@ function OfferExperience({
             ? "This offer has expired. Search again to continue."
             : "Test mode · Fictional travelers · No real payment"}
         </p>
-        <button className="text-button" disabled={busy} onClick={onRefresh}>
+        <button
+          className="text-button"
+          disabled={busy || recoveryPending}
+          onClick={onRefresh}
+        >
           Refresh offer
         </button>
       </div>
@@ -275,7 +281,10 @@ function OfferExperience({
             className={stage === item ? "step-current" : ""}
             aria-current={stage === item ? "step" : undefined}
             disabled={
-              busy || expired || (item === "review" && stage !== "review")
+              busy ||
+              recoveryPending ||
+              expired ||
+              (item === "review" && stage !== "review")
             }
             onClick={() => {
               if (stage !== item) {
@@ -285,7 +294,7 @@ function OfferExperience({
             }}
           >
             <span>0{index + 1}</span>
-            {["Your seats", "Bags & travelers", "A final look"][index]}
+            {["Seats (optional)", "Bags & travelers", "Review"][index]}
             {index < 2 && <i />}
           </button>
         ))}
@@ -307,45 +316,59 @@ function OfferExperience({
       )}
       <div className="booking-layout">
         <div className="booking-content">
-          <section className="booking-section sandbox-itinerary">
-            <div className="booking-section-heading">
-              <span className="section-icon">
-                <Icon name="plane" size={22} />
-              </span>
+          <details className="booking-section sandbox-itinerary">
+            <summary>
               <div>
-                <h2>A closer look at your flight.</h2>
-                <p>
-                  {offer.airline.name} ·{" "}
-                  {prettyDate(offer.departureAt.slice(0, 10), true)} ·{" "}
-                  {passengerIds.length} adult
-                  {passengerIds.length === 1 ? "" : "s"}
-                </p>
+                <strong>
+                  {offer.origin} → {offer.destination} · {offer.airline.name}
+                </strong>
+                <span>
+                  {prettyDate(offer.departureAt.slice(0, 10), true)} · Flight
+                  details
+                </span>
               </div>
-            </div>
-            {segments.map((item, index) => (
-              <div className="sandbox-segment-detail" key={item.id}>
-                <span className="sandbox-leg-number">0{index + 1}</span>
+              <Icon name="chevron" size={17} />
+            </summary>
+            <div className="sandbox-itinerary-content">
+              <div className="booking-section-heading">
+                <span className="section-icon">
+                  <Icon name="plane" size={22} />
+                </span>
                 <div>
-                  <strong>
-                    {item.origin} → {item.destination}
-                  </strong>
+                  <h2>A closer look at your flight.</h2>
                   <p>
-                    {item.originName} → {item.destinationName}
+                    {offer.airline.name} ·{" "}
+                    {prettyDate(offer.departureAt.slice(0, 10), true)} ·{" "}
+                    {passengerIds.length} adult
+                    {passengerIds.length === 1 ? "" : "s"}
                   </p>
-                  <span>
-                    {item.departureAt.slice(11, 16)} departure ·{" "}
-                    {item.arrivalAt.slice(11, 16)} arrival ·{" "}
-                    {item.arrivalAt.slice(0, 10)}
-                    <br />
-                    Operated by {item.operatingCarrier} · {item.flightNumber}
-                  </span>
                 </div>
               </div>
-            ))}
-            <p className="sandbox-small-note">
-              All departure and arrival times use the airport’s local time.
-            </p>
-          </section>
+              {segments.map((item, index) => (
+                <div className="sandbox-segment-detail" key={item.id}>
+                  <span className="sandbox-leg-number">0{index + 1}</span>
+                  <div>
+                    <strong>
+                      {item.origin} → {item.destination}
+                    </strong>
+                    <p>
+                      {item.originName} → {item.destinationName}
+                    </p>
+                    <span>
+                      {item.departureAt.slice(11, 16)} departure ·{" "}
+                      {item.arrivalAt.slice(11, 16)} arrival ·{" "}
+                      {item.arrivalAt.slice(0, 10)}
+                      <br />
+                      Operated by {item.operatingCarrier} · {item.flightNumber}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              <p className="sandbox-small-note">
+                All departure and arrival times use the airport’s local time.
+              </p>
+            </div>
+          </details>
           {stage === "seats" ? (
             <>
               <section className="booking-section sandbox-seat-selection">
@@ -467,12 +490,18 @@ function OfferExperience({
                     `Viewing seats for traveler ${traveler + 1} on ${segment.origin} → ${segment.destination}.`}
                 </p>
               </section>
-              <div className="booking-navigation">
-                <p className="sandbox-small-note">
-                  {assignments.length} seat choice
-                  {assignments.length === 1 ? "" : "s"} · You can continue
-                  without choosing seats.
-                </p>
+              <BookingActionBar
+                step="Step 1 of 3 · Optional seats"
+                total={`${money(fare + seatFees + bagFees, summaryCurrency)} · estimated total`}
+                hint={
+                  expired
+                    ? "This offer expired. Return to flights for a fresh fare."
+                    : `${assignments.length} seat${assignments.length === 1 ? "" : "s"} selected. Continue without seats if you prefer.`
+                }
+              >
+                <Link className="text-link" href={back}>
+                  ← Back to flights
+                </Link>
                 <button
                   className="button button-primary"
                   disabled={expired}
@@ -480,7 +509,7 @@ function OfferExperience({
                 >
                   Continue to bags <Icon name="arrow" size={16} />
                 </button>
-              </div>
+              </BookingActionBar>
             </>
           ) : (
             <SandboxCheckout
@@ -498,6 +527,7 @@ function OfferExperience({
                 setStage(next);
               }}
               onBusy={setBusy}
+              onRecovery={setRecoveryPending}
               onQuote={setCheckedQuote}
             />
           )}
@@ -561,18 +591,6 @@ function OfferExperience({
             No real travel or payment. We check prices before confirming your
             test booking. Refreshing clears your choices.
           </p>
-          {stage === "seats" && (
-            <button
-              className="button button-primary"
-              disabled={expired}
-              onClick={() => setStage("extras")}
-            >
-              Continue to bags <Icon name="arrow" size={16} />
-            </button>
-          )}
-          <Link className="button button-outline" href={back}>
-            Back to flights <Icon name="arrow" size={16} />
-          </Link>
         </aside>
       </div>
     </div>

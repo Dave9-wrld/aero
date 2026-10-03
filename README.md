@@ -14,6 +14,7 @@ A responsive flight booking application built with Next.js, React and TypeScript
 - **Search state in the URL** — search criteria, filters and sorting remain available after refreshing or using browser navigation.
 - **Interactive seat maps** — keyboard navigation and individual seat choices for each traveler and flight segment.
 - **Booking flow** — optional baggage, itemized totals, review and printable demo confirmations.
+- **Guided navigation** — persistent Back and Continue controls, visible step guidance and totals, and a shortcut to resume unfinished sample bookings.
 - **Duffel sandbox integration** — provider test offers, current seat availability, baggage services and fictional traveler profiles.
 - **Server price validation** — fresh fares and services are checked before creating a test order. Changed prices require a new review.
 - **Booking recovery** — uncertain submissions can be checked against Duffel's saved orders without automatically submitting another booking.

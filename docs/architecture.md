@@ -97,3 +97,11 @@ Reference: [Duffel orders](https://duffel.com/docs/api/v2/orders), including off
 `trip-store.ts` uses `useSyncExternalStore` so My trip updates after confirmation. Session storage restores completed receipts in the same tab. A separate sandbox confirmation route avoids confusing provider test orders with local sample confirmations. Printing produces a marked test itinerary rather than a valid boarding pass.
 
 Exercise: explain why disabling the confirm button helps UX but does not protect the server against duplicate requests.
+
+## 11. Keep booking navigation visible
+
+`BookingActionBar` is shared by sample and sandbox checkout. It keeps Back, the next action, the step number and the current total visible at the bottom of the viewport. The page reserves space for the bar, with responsive layouts and safe-area padding. It remains inside the traveler form so its submit action retains form semantics.
+
+The sandbox itinerary expands in place instead of repeating a full flight breakdown above every step. On small screens, the booking content comes before the secondary summary. Step changes move focus to the heading; invalid sample traveler details focus the first affected field. A missing sandbox acknowledgment can be reached directly from the action bar, and no order is submitted until it is checked.
+
+The header derives the next unfinished sample step from validated booking state. With no trip it links directly to search; with an unfinished draft it offers Continue booking. During uncertain sandbox order recovery, refresh and step changes are disabled so the read-only recovery action is retained.

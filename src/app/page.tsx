@@ -59,7 +59,11 @@ export default async function Home() {
         </div>
         <RouteGlobe />
       </section>
-      <section className="container search-section" aria-label="Search flights">
+      <section
+        id="flight-search"
+        className="container search-section"
+        aria-label="Search flights"
+      >
         <SearchForm initial={initial} />
         <p className="search-note">
           <Icon name="info" size={14} />
