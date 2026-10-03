@@ -32,12 +32,12 @@ No database is needed for this search. Duffel holds the provider-side data; Aero
 
 The sample seat map and naira baggage fees do not describe a Duffel offer. Sandbox results use separate models and a complete test journey. Selecting seats and bags makes no reservation. A server price check resolves current services and signs a short-lived quote. Confirmation retrieves fresh services again before creating a test order. Profiles are fixed fictional data; airlines requiring identity documents are not supported. Refreshing clears local choices.
 
-Submission records are saved in ignored `.aero-data/orders`. Preserve this directory on a persistent single-server installation. Confirmed requests return a saved receipt. Uncertain submissions remain blocked and require checking Duffel's Developer test dashboard; order mutations are never automatically retried. Multi-instance or serverless hosting needs shared durable storage before enabling orders.
+Duffel stores confirmed test orders. Aero checks saved orders by offer ID and verifies their quote hash before returning a receipt. Uncertain submissions expose a read-only **Check booking status** action; order mutations are never automatically retried. Hosted sandbox checkout works without a writable filesystem. A real booking service would additionally require a shared transactional submission ledger.
 
 ## Learn by tracing
 
 Find the JSON body sent by `sandbox-provider.ts`. Compare it with the JSON sent by `duffel.server.ts`. Explain why those two requests have different shapes and why only the second has an Authorization header.
 
-Then find the AbortController in FlightResults. It cancels a superseded browser request and guards against stale responses. Reads have a 15-second provider timeout. Order submissions use a separate 60-second timeout and continue on the server if the browser disconnects; the submission record protects against repeating an uncertain mutation.
+Then find the AbortController in FlightResults. It cancels a superseded browser request and guards against stale responses. Reads have a 15-second provider timeout. Order submissions use a separate 60-second timeout and continue on the server if the browser disconnects; provider reconciliation recovers a saved order after a lost response.
 
 Official references: [offer requests](https://duffel.com/docs/api/v2/offer-requests), [offer schema](https://duffel.com/docs/api/v2/offers), [test mode](https://duffel.com/docs/api/overview/test-mode).

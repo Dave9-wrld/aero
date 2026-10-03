@@ -2,14 +2,17 @@
 
 A flight booking portfolio project built with **Next.js, React and TypeScript**. Search flights, compare fares, choose seats, add bags, review a current price and see your confirmation.
 
+**[Live demo](https://aero-zeta-ruddy.vercel.app/) · [Source code](https://github.com/Dave9-wrld/aero)**
+
 This guide walks you through using the app and understanding the code. Start with the tour, then follow one interaction through the architecture.
 
 ## 1. Run the app
 
-Open a terminal inside the `aero` folder, not the parent portfolio folder:
+Clone the repository and open a terminal inside it:
 
 ```powershell
-cd "C:\Users\davea\OneDrive\Desktop\portfolio project\aero"
+git clone https://github.com/Dave9-wrld/aero.git
+cd aero
 npm install
 npm run dev
 ```
